@@ -1,16 +1,8 @@
--- ============================================================================
--- PHARMACY PRESCRIPTION AND MEDICINE STOCK MANAGEMENT SYSTEM
--- Review 2: DDL Scripts with Full Integrity Constraints & Triggers
--- Compatible with MySQL 8.0+
--- ============================================================================
-
 DROP DATABASE IF EXISTS pharmacy_db;
 CREATE DATABASE pharmacy_db CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 USE pharmacy_db;
 
--- ----------------------------------------------------------------------------
 -- 1. CATEGORIES TABLE
--- ----------------------------------------------------------------------------
 CREATE TABLE categories (
     category_id INT AUTO_INCREMENT PRIMARY KEY,
     category_name VARCHAR(60) NOT NULL UNIQUE,
@@ -18,9 +10,7 @@ CREATE TABLE categories (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB;
 
--- ----------------------------------------------------------------------------
 -- 2. MANUFACTURERS TABLE
--- ----------------------------------------------------------------------------
 CREATE TABLE manufacturers (
     manufacturer_id INT AUTO_INCREMENT PRIMARY KEY,
     company_name VARCHAR(100) NOT NULL UNIQUE,
@@ -30,9 +20,7 @@ CREATE TABLE manufacturers (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB;
 
--- ----------------------------------------------------------------------------
 -- 3. SUPPLIERS TABLE
--- ----------------------------------------------------------------------------
 CREATE TABLE suppliers (
     supplier_id INT AUTO_INCREMENT PRIMARY KEY,
     supplier_name VARCHAR(100) NOT NULL,
@@ -45,9 +33,7 @@ CREATE TABLE suppliers (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB;
 
--- ----------------------------------------------------------------------------
 -- 4. MEDICINES TABLE
--- ----------------------------------------------------------------------------
 CREATE TABLE medicines (
     medicine_id INT AUTO_INCREMENT PRIMARY KEY,
     brand_name VARCHAR(100) NOT NULL,
@@ -65,9 +51,7 @@ CREATE TABLE medicines (
     CONSTRAINT uq_brand_strength UNIQUE (brand_name, strength, dosage_form)
 ) ENGINE=InnoDB;
 
--- ----------------------------------------------------------------------------
 -- 5. PURCHASES TABLE
--- ----------------------------------------------------------------------------
 CREATE TABLE purchases (
     purchase_id INT AUTO_INCREMENT PRIMARY KEY,
     invoice_number VARCHAR(50) NOT NULL UNIQUE,
@@ -80,9 +64,7 @@ CREATE TABLE purchases (
     CONSTRAINT chk_purchase_total CHECK (total_amount >= 0.00)
 ) ENGINE=InnoDB;
 
--- ----------------------------------------------------------------------------
 -- 6. BATCHES TABLE (Core Inventory Unit)
--- ----------------------------------------------------------------------------
 CREATE TABLE batches (
     batch_id INT AUTO_INCREMENT PRIMARY KEY,
     batch_number VARCHAR(50) NOT NULL,
@@ -105,9 +87,7 @@ CREATE TABLE batches (
     CONSTRAINT chk_stock_positive CHECK (current_stock >= 0)
 ) ENGINE=InnoDB;
 
--- ----------------------------------------------------------------------------
 -- 7. CUSTOMERS TABLE
--- ----------------------------------------------------------------------------
 CREATE TABLE customers (
     customer_id INT AUTO_INCREMENT PRIMARY KEY,
     full_name VARCHAR(100) NOT NULL,
@@ -118,9 +98,7 @@ CREATE TABLE customers (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB;
 
--- ----------------------------------------------------------------------------
 -- 8. PRESCRIPTIONS TABLE
--- ----------------------------------------------------------------------------
 CREATE TABLE prescriptions (
     prescription_id INT AUTO_INCREMENT PRIMARY KEY,
     prescription_code VARCHAR(50) NOT NULL UNIQUE,
@@ -134,9 +112,7 @@ CREATE TABLE prescriptions (
     CONSTRAINT fk_rx_customer FOREIGN KEY (customer_id) REFERENCES customers(customer_id) ON DELETE RESTRICT
 ) ENGINE=InnoDB;
 
--- ----------------------------------------------------------------------------
 -- 9. SALES TABLE
--- ----------------------------------------------------------------------------
 CREATE TABLE sales (
     sale_id INT AUTO_INCREMENT PRIMARY KEY,
     invoice_number VARCHAR(50) NOT NULL UNIQUE,
@@ -157,9 +133,7 @@ CREATE TABLE sales (
     CONSTRAINT chk_net CHECK (net_amount >= 0.00)
 ) ENGINE=InnoDB;
 
--- ----------------------------------------------------------------------------
 -- 10. SALE ITEMS TABLE
--- ----------------------------------------------------------------------------
 CREATE TABLE sale_items (
     sale_item_id INT AUTO_INCREMENT PRIMARY KEY,
     sale_id INT NOT NULL,
@@ -174,9 +148,7 @@ CREATE TABLE sale_items (
     CONSTRAINT chk_item_total CHECK (total_price >= 0.00)
 ) ENGINE=InnoDB;
 
--- ----------------------------------------------------------------------------
 -- 11. STOCK MOVEMENTS (AUDIT TRAIL)
--- ----------------------------------------------------------------------------
 CREATE TABLE stock_movements (
     movement_id INT AUTO_INCREMENT PRIMARY KEY,
     batch_id INT NOT NULL,
@@ -188,9 +160,7 @@ CREATE TABLE stock_movements (
     CONSTRAINT fk_mov_batch FOREIGN KEY (batch_id) REFERENCES batches(batch_id) ON DELETE RESTRICT
 ) ENGINE=InnoDB;
 
--- ----------------------------------------------------------------------------
 -- 12. PAYMENTS TABLE
--- ----------------------------------------------------------------------------
 CREATE TABLE payments (
     payment_id INT AUTO_INCREMENT PRIMARY KEY,
     transaction_type ENUM('SALE_COLLECTION', 'SUPPLIER_PAYMENT') NOT NULL,
@@ -202,9 +172,7 @@ CREATE TABLE payments (
     CONSTRAINT chk_pay_amount CHECK (amount > 0.00)
 ) ENGINE=InnoDB;
 
--- ============================================================================
 -- INDEXES FOR FREQUENTLY SEARCHED ATTRIBUTES (Performance Optimization)
--- ============================================================================
 CREATE INDEX idx_med_brand ON medicines(brand_name);
 CREATE INDEX idx_med_generic ON medicines(generic_name);
 CREATE INDEX idx_batch_expiry ON batches(expiry_date);
@@ -212,9 +180,7 @@ CREATE INDEX idx_batch_stock ON batches(current_stock);
 CREATE INDEX idx_sale_date ON sales(sale_date);
 CREATE INDEX idx_cust_phone ON customers(phone_number);
 
--- ============================================================================
 -- DATABASE TRIGGERS ENFORCING INTEGRITY RULES
--- ============================================================================
 DELIMITER $$
 
 -- Rule 1: No sale of expired medicines
@@ -256,8 +222,6 @@ BEGIN
     UPDATE batches
     SET current_stock = current_stock - NEW.quantity
     WHERE batch_id = NEW.batch_id;
-
-    -- Audit log
     INSERT INTO stock_movements (batch_id, movement_type, quantity, reference_id, remarks)
     VALUES (NEW.batch_id, 'SALE_OUT', NEW.quantity, NEW.sale_id, 'Dispensed via retail invoice');
 END$$
